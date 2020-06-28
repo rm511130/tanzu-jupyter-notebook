@@ -464,22 +464,61 @@ Your role in the Shared-Cluster is vmware-role123
 http://127.0.0.1:8888/?token=workshop
 ```
 
-- Once you are at the Home Page of your Tanzu-Jupyter-Notebook App, click on `New` to then create a `Python3 Jupyter Notebook` and a `Terminal Window` per the example shown below:
+- Once you are at the Home Page of your Tanzu-Jupyter-Notebook App, click on `New` to then create a `Python3 Jupyter Notebook` and a `Terminal Window` per the example shown below. Try the command `!set` in the `Python3 Jupyter Notebook`, you'll need to press `SHIFT-ENTER` to execute the `!set` command. 
 
 ![](./images/JupyterNotebook.png)
 
-- 
+
+- We've achieved the goal of having both the noninteractive `Python3 Jupyter Notebook` and interactive `Jupyter Terminal Window` displaying the same environment variables.
+
+- Let's now try to run a Docker Image from the `Jupyter Terminal Window` by issuing the following `docker run` command:
+
+```
+root@9a8974ad0ae3:~# docker run -d -p 8080:80 rmeira/chess
+```
+- You should see the following output:
+
+```
+Unable to find image 'rmeira/chess:latest' locally
+latest: Pulling from rmeira/chess
+68ced04f60ab: Pull complete
+1d2a5d8fa585: Pull complete
+5d59ec4ae241: Pull complete
+d42331ef4d44: Pull complete
+408b7b7ee112: Pull complete
+570cd47896d5: Pull complete
+2419413b2a16: Pull complete
+2c7832852643: Pull complete
+8b0b209a25bc: Pull complete
+46011418685f: Pull complete
+68be3748ea55: Pull complete
+4e3af655ec1e: Pull complete
+9f579d3b7159: Pull complete
+1b0e436ddfb8: Pull complete
+6abd3297ae8c: Pull complete
+55136fa6c6df: Pull complete
+9c0a1ee10477: Pull complete
+4e395e23225b: Pull complete
+Digest: sha256:1e2f9674f4deabcca481312926a0a1fdf012e8d855363553a52b048171b98fc6
+Status: Downloaded newer image for rmeira/chess:latest
+1270e59541ba45eefeadc8f59db4766c0b1706a74fe0913cf3155582d3af1c65
+```
+
+- Now try to access the url `http://127.0.0.1:8080` and you should see the Chess App.
+
 
 ## Step 6 - Running new Jupyter Notebook App Docker Image on a Kubernetes Cluster:
 
 - I happen to have a TKGI (PKS) Cluster running in my Lab Environment. 
-- Using my MacBook, I can execute the following commands to access a K8s cluster in my Lab.
-- The K8s cluster is at `small.k8s.pcf4u.com` and is called `small`:
+- Using my MacBook, I can execute the following commands to create and access a K8s cluster in my Lab.
+- The K8s cluster we are  going to use will be at `small.k8s.pcf4u.com` and will be called `small`:
 
 ```
 pks login -a https://api.pks.pcf4u.com:9021 -p password -k -u pks_admin
-pks clusters
-pks get-credentials small
+pks create-cluster small --plan small --num-nodes 1 -e small.pks.pcf4u.com --wait
+pks cluster small
+nslookup small.pks.pcf4u.com
+printf 'password\n' | pks get-credentials small
 ```
 
 - We're going to create our Jupyter Notebook app in a Namespace called `jupyter`:
@@ -488,19 +527,32 @@ kubectl create ns jupyter
 ```
 - Now let's see two ways of creating a Jupyter Notebook App deployment:
 
-### Imperative `kubectl run` syntax (soon to be deprecated): 
+### Option 1:  Imperative `kubectl run` syntax (soon to be deprecated): 
 
 ```
-kubectl run jupyter --image=rmeira/tanzu-jupyter-notebook:1.7 -n jupyter --port=8888 --env JUPYTER_TOKEN=workshop --env my_number=1 
+kubectl run jupyter --image=rmeira/tanzu-jupyter-notebook:1.10 -n jupyter --port=8888 --env JUPYTER_TOKEN=workshop --env my_number=1 --command -- /bin/bash /home/jovyan/.bashrc
 ```
 
-### Declarative`kubectl apply` syntax: 
+- You should see the following message:
+
+```
+kubectl run --generator=deployment/apps.v1 is DEPRECATED and will be removed in a future version. 
+Use kubectl run --generator=run-pod/v1 or kubectl create instead.
+deployment.apps/jupyter created
+```
+- So you can now run the following command to help create the declarative yaml file that will accomplish the same results of the `kubectl run` that you just executed:
+
+```
+kubectl get deployment jupyter -n jupyter -o yaml 
+```
+
+### Option 2:  Declarative`kubectl apply` syntax: 
 
 - The `kubectl run` syntax will be deprecated starting with Kubernetes 1.18. You can also use the following syntax to achieve the same results:
 
 ```
 cat <<EOF | kubectl apply -f -
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
@@ -508,7 +560,6 @@ metadata:
   name: jupyter
   namespace: jupyter
 spec:
-  replicas: 1
   selector:
     matchLabels:
       run: jupyter
@@ -518,13 +569,16 @@ spec:
         run: jupyter
     spec:
       containers:
-      - env:
+      - command:
+        - /bin/bash
+        - /home/jovyan/.bashrc
+        env:
         - name: JUPYTER_TOKEN
           value: workshop
         - name: my_number
           value: "1"
-        image: rmeira/tanzu-jupyter-notebook:1.7
-        imagePullPolicy: Always
+        image: rmeira/tanzu-jupyter-notebook:1.10
+        imagePullPolicy: IfNotPresent
         name: jupyter
         ports:
         - containerPort: 8888
@@ -545,19 +599,26 @@ kubectl get pods -n jupyter
 ```
 kubectl logs $(kubectl get pods -n jupyter | grep jupyter | awk '{ print $1 }') -n jupyter
 
-[I 03:44:36.753 NotebookApp] Writing notebook server cookie secret to /home/jovyan/.local/share/jupyter/runtime/notebook_cookie_secret
-[I 03:44:37.063 NotebookApp] [jupyter_nbextensions_configurator] enabled 0.4.1
-[I 03:44:37.456 NotebookApp] JupyterLab extension loaded from /opt/conda/lib/python3.7/site-packages/jupyterlab
-[I 03:44:37.456 NotebookApp] JupyterLab application directory is /opt/conda/share/jupyter/lab
-[I 03:44:37.783 NotebookApp] Serving notebooks from local directory: /home/jovyan
-[I 03:44:37.783 NotebookApp] The Jupyter Notebook is running at:
-[I 03:44:37.783 NotebookApp] http://jupyter-d55bf59dd-t7nvh:8888/?token=...
-[I 03:44:37.783 NotebookApp]  or http://127.0.0.1:8888/?token=...
-[I 03:44:37.783 NotebookApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+my_number is 1
+openjdk version "11.0.7" 2020-04-14
+OpenJDK Runtime Environment (build 11.0.7+10-post-Ubuntu-2ubuntu218.04)
+OpenJDK 64-Bit Server VM (build 11.0.7+10-post-Ubuntu-2ubuntu218.04, mixed mode, sharing)
+Your UserID is user1
+Your DevopsID is devops1
+Your Namespace in the Shared-Cluster is namespace1
+Your role in the Shared-Cluster is vmware-role1
+[I 20:57:11.003 NotebookApp] [jupyter_nbextensions_configurator] enabled 0.4.1
+[I 20:57:11.911 NotebookApp] JupyterLab extension loaded from /opt/conda/lib/python3.7/site-packages/jupyterlab
+[I 20:57:11.912 NotebookApp] JupyterLab application directory is /opt/conda/share/jupyter/lab
+[I 20:57:12.608 NotebookApp] Serving notebooks from local directory: /home/jovyan
+[I 20:57:12.608 NotebookApp] The Jupyter Notebook is running at:
+[I 20:57:12.609 NotebookApp] http://jupyter-78979679-nx6r8:8888/?token=...
+[I 20:57:12.609 NotebookApp]  or http://127.0.0.1:8888/?token=...
+[I 20:57:12.609 NotebookApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
 ```
 - Now we need to expose this deployment as a service. You have a few options:
 
-### Step 6 - Alternative A - If using a K8s environment that auto-creates a LoadBalancer for you:
+### Alternative A - If using a K8s environment that auto-creates a LoadBalancer for you:
 
 ```
 kubectl expose deployment jupyter -n jupyter --type=LoadBalancer --port=80 --target-port=8888
@@ -571,7 +632,7 @@ jupyter   LoadBalancer   10.100.200.124   34.74.229.140   80:30958/TCP   44s
 - Open a browser at [http://34.74.229.140/?token=workshop](http://34.74.229.140/?token=workshop)
 - You should see a Jupyter Notebook that is running in the `small` K8s cluster on `pcf4u.com`
 
-### Step 6 - Alternative B - If using a K8s environment that does not auto-create a LoadBalancer for you:
+### Alternative B - If using a K8s environment that does not auto-create a LoadBalancer for you:
 
 ```
 kubectl expose deployment jupyter -n jupyter --type=NodePort --target-port=8888
