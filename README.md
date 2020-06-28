@@ -464,7 +464,11 @@ Your role in the Shared-Cluster is vmware-role123
 http://127.0.0.1:8888/?token=workshop
 ```
 
-- Once you are at the Home Page of your Tanzu-Jupyter-Notebook App, click on 
+- Once you are at the Home Page of your Tanzu-Jupyter-Notebook App, click on `New` to then create a `Python3 Jupyter Notebook` and a `Terminal Window` per the example shown below:
+
+![](./images/JupyterNotebook.png)
+
+- 
 
 ## Step 6 - Running new Jupyter Notebook App Docker Image on a Kubernetes Cluster:
 
