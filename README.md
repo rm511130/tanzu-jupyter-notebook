@@ -41,6 +41,8 @@ docker system prune -a -f
 - 06-28-2020: Created release 1.10:
   - placed Gemfire in /usr/local/bin and update environment variables
   - documented the changes
+  
+- 07-02-2020: Changed to use DotNet version 3.1.201 
 
 ## Step 1 - Working from my MacBook's `/home/jupyter-notebook` directory
 
@@ -74,17 +76,27 @@ RUN wget https://github.com/pivotal-cf/pivnet-cli/releases/download/v1.0.4/pivne
     mv pivnet-linux-amd64-1.0.4 /usr/local/bin/pivnet && \
     chmod +x /usr/local/bin/pivnet
 
-RUN wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && \
-    sudo dpkg -i packages-microsoft-prod.deb
+RUN wget https://packages.microsoft.com/config/ubuntu/18.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && \
+    sudo dpkg -i packages-microsoft-prod.deb 
 
-RUN sudo apt-get update; \
-    sudo apt-get install -y apt-transport-https && \
-    sudo apt-get update && \
-    sudo apt-get install -y dotnet-sdk-3.1
+# The following 4 lines were commented out and replaced by the subsequent lines because 
+# we need dotnet-sdk-3.1.201 and not dotnet-sdk-3.1.301 which was being referenced by dotnet-sdk-3.1 in 07/01/2020
+#
+# RUN sudo apt-get update; \
+#     sudo apt-get install -y apt-transport-https && \
+#     sudo apt-get update && \
+#     sudo apt-get install -y dotnet-sdk-3.1
+
+# source: https://versionsof.net/core/3.1/3.1.3/
+#
+RUN wget https://download.visualstudio.microsoft.com/download/pr/f65a8eb0-4537-4e69-8ff3-1a80a80d9341/cc0ca9ff8b9634f3d9780ec5915c1c66/dotnet-sdk-3.1.201-linux-x64.tar.gz -O sdk-3.1.201-linux-x64-binaries.tar.gz && \
+    mkdir -p "$HOME/.dotnet" && \
+    tar zxvf sdk-3.1.201-linux-x64-binaries.tar.gz -C "$HOME/.dotnet" && \
+    rm "$HOME/sdk-3.1.201-linux-x64-binaries.tar.gz"     
 
 # IMPORTANT -- USE A VALID API-TOKEN FROM https://network.pivotal.io > Sign-in > Edit Profile > Request New Refresh Token
 
-RUN pivnet login --api-token='f55dee4fd7e54cd0991813d30e052c29-r'
+RUN pivnet login --api-token='3c7381d41ea8457193c1539e4256bea4-r'
 
 RUN pivnet download-product-files --product-slug='pivotal-container-service' --release-version='1.7.0' --product-file-id=646536 && \
     mv pks-linux-amd64* /usr/local/bin/pks && \
