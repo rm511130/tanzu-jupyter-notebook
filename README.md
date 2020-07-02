@@ -346,6 +346,9 @@ export role=vmware-role$my_number
 export namespace=namespace$my_number
 export JAVA_HOME=/usr
 
+export DOTNET_ROOT=$HOME/.dotnet 
+export PATH=$PATH:$HOME/.dotnet
+
 $JAVA_HOME/bin/java -version
 echo "Your UserID is $user"
 echo "Your DevopsID is $devops"
